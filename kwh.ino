@@ -76,7 +76,7 @@ void restore_display () {
 
 void setup () {
   display_text("____    ");
-  Serial.begin(57600);
+  Serial.begin(115200);
   pinMode(A1, INPUT);
   pinMode(13, OUTPUT);
   pinMode(2, INPUT);
@@ -97,10 +97,10 @@ unsigned short hits = 0;
 unsigned long restore_time = 0;
 boolean settingschanged = false;
 unsigned long key_debounce = 0;
-  
+
 void loop () {
 //  delay(10);
-  
+
   byte keys = display.getButtons();
 
   unsigned short sum = 0;
@@ -111,9 +111,9 @@ void loop () {
   unsigned long bigsum = 0;
   for (unsigned short i = 0; i < READINGS; i++) bigsum += readings[i];
   unsigned short average = bigsum / READINGS;
-  
+
   unsigned short ratio = (double) sum / (average+1) * 100;
-  
+
   if (keys) {
     restore_time = millis() + 2000;
     if (!key_debounce) {
@@ -157,7 +157,7 @@ void loop () {
       hi = 1000;
   }
 
-  boolean newledstate = ledstate 
+  boolean newledstate = ledstate
     ? (ratio >  lo)
     : (ratio >= hi);
 
@@ -167,7 +167,7 @@ void loop () {
   unsigned long ledmask = 0xff >> 8 - numleds;
   if (newledstate) ledmask <<= 8;
   display.setLEDs(ledmask);
-   
+
   if ((!gotenough) || (!newledstate)) {
     readings[cursor++] = sum;
     if (cursor >= READINGS) {
@@ -180,11 +180,11 @@ void loop () {
     }
   }
 
-  
+
   if (newledstate) hits++;
- 
+
   if (newledstate == ledstate) return;
-  
+
   digitalWrite(13, ledstate = newledstate);
 
   if (!ledstate) {
@@ -196,20 +196,20 @@ void loop () {
     hits = 0;
     return;
   }
-  
+
   unsigned long now = millis();
   unsigned long time = now - previous;
 
   if (time < debounce_time) return;
 
-  previous = now;  
- 
+  previous = now;
+
   if (!cycle++) {
     Serial.println("Discarding incomplete cycle.");
     display_text("****    ");
     return;
   }
-  
+
   double W = 1000 * ((double) MS_PER_HOUR / time) / settings.cycles_per_kwh;
   Serial.print("Cycle ");
   Serial.print(cycle, DEC);
@@ -218,7 +218,7 @@ void loop () {
   Serial.print(" ms, ");
   Serial.print(W, 2);
   Serial.println(" W");
-  
+
   display_numtext(W, "");
 }
 
