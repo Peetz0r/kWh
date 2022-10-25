@@ -1,44 +1,8 @@
-#include "EEPROM.h"
-#include "AnythingEEPROM.h"
-#include <inttypes.h>
-
 #define READINGS       250
 #define EEPROM_OFFSET  100
 #define MS_PER_HOUR    3.6e6
 
-struct SettingsStruct {
-  unsigned short cycles_per_kwh;
-  unsigned char  lower_threshold;
-  unsigned char  upper_threshold;
-  unsigned short max_watt;
-} settings;
-
 unsigned long debounce_time;
-
-void calc_debounce() {
-  debounce_time = (1000 * ((double) MS_PER_HOUR / ((long) settings.cycles_per_kwh * settings.max_watt)));
-  Serial.print("Debounce time (ms): ");
-  Serial.println(debounce_time);
-}
-
-void read_settings() {
-  EEPROM_readAnything(EEPROM_OFFSET, settings);
-  if (settings.lower_threshold == 0xff) settings.lower_threshold = 101;
-  if (settings.upper_threshold == 0xff) settings.upper_threshold = 105;
-  if (settings.cycles_per_kwh == 0xffff) settings.cycles_per_kwh = 375;
-  if (settings.max_watt == 0xffff) settings.max_watt = 6000;
-  Serial.println("Settings: ");
-  Serial.println(settings.cycles_per_kwh, DEC);
-  Serial.println(settings.lower_threshold, DEC);
-  Serial.println(settings.upper_threshold, DEC);
-  Serial.println(settings.max_watt, DEC);
-  calc_debounce();
-}
-
-void save_settings() {
-  EEPROM_writeAnything(EEPROM_OFFSET, settings);
-  calc_debounce();
-}
 
 void setup () {
   Serial.begin(115200);
@@ -46,7 +10,23 @@ void setup () {
   pinMode(13, OUTPUT);
   pinMode(2, INPUT);
   digitalWrite(2, HIGH);
-  read_settings();
+
+  Serial.println("Settings: ");
+
+  Serial.print("Cycles per kWh: ");
+  Serial.println(CYCLES_PER_KWH, DEC);
+
+  Serial.print("Thresholds: ");
+  Serial.print(LOWER_THRESHOLD, DEC);
+  Serial.print(" - ");
+  Serial.println(UPPER_THRESHOLD, DEC);
+
+  Serial.print("Max power (W): ");
+  Serial.println(MAX_WATT, DEC);
+
+  debounce_time = (1000 * ((double) MS_PER_HOUR / ((long) CYCLES_PER_KWH * MAX_WATT)));
+  Serial.print("Debounce time (ms): ");
+  Serial.println(debounce_time);
 }
 
 boolean ledstate = LOW;
@@ -58,9 +38,6 @@ unsigned short cursor = 0;
 boolean gotenough = false;
 
 unsigned short hits = 0;
-
-unsigned long restore_time = 0;
-boolean settingschanged = false;
 
 void loop () {
 
@@ -75,17 +52,8 @@ void loop () {
 
   unsigned short ratio = (double) sum / (average+1) * 100;
 
-  if (restore_time && millis() >= restore_time) {
-    restore_time = 0;
-    if (settingschanged) {
-      Serial.println("Saving settings");
-      save_settings();
-      settingschanged = false;
-    }
-  }
-
-  unsigned short lo = settings.lower_threshold;
-  unsigned short hi = settings.upper_threshold;
+  unsigned short lo = LOWER_THRESHOLD;
+  unsigned short hi = UPPER_THRESHOLD;
 
   if (hi == 254) {
       lo = 400;
@@ -135,7 +103,7 @@ void loop () {
     return;
   }
 
-  double W = 1000 * ((double) MS_PER_HOUR / time) / settings.cycles_per_kwh;
+  double W = 1000 * ((double) MS_PER_HOUR / time) / CYCLES_PER_KWH;
   Serial.print("Cycle ");
   Serial.print(cycle, DEC);
   Serial.print(": ");
